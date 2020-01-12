@@ -1,0 +1,5 @@
+{
+  "plaid_client_id": "<< your client id here >>",
+  "plaid_secret": "<< your sandbox secret here  >>",
+  "access_token": "<< one test access_token here, can be retrieved from quickstart projects >>"
+}
