@@ -20,7 +20,7 @@ namespace DailyTransactionDigestEmail
 
         [FunctionName("SendDailyTransactionEmailFunction")]
         public async Task Run(
-            [TimerTrigger("0 7 * * * *"  // 7am everyday
+            [TimerTrigger("0 0 7 * * *"  // 7am everyday
 #if DEBUG
                 , RunOnStartup=true
 #endif
