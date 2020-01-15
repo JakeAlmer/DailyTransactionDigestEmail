@@ -52,20 +52,17 @@ namespace DailyTransactionDigestEmail.AzureFunction.Business
                 foreach (var account in result.Transactions.accounts)
                 {
                     var accountTransactions = result.Transactions.transactions.Where(p => p.account_id == account.account_id).ToList();
-                    body += $"<tr><td colspan='2'><b>{result.InstitutionAccount.InstitutionNickName} - {account.official_name ?? account.name}</b></td></tr>";
                     if (accountTransactions.Any())
                     {
+                        body += $"<tr><td colspan='3'><b>{result.InstitutionAccount.InstitutionNickName} - {account.official_name ?? account.name}</b></td></tr>";
                         foreach (var transaction in accountTransactions)
                         {
-                            body += "<tr>";
+                            body += $"<tr style='color:{(transaction.pending ? "darkgray" : "black")};'>";
                             body += $"<td>{transaction.name}</td>";
                             body += $"<td style='text-align:right;padding-left:10px;'>{transaction.amount:c}</td>";
+                            body += $"<td>{(transaction.pending ? "(pending)" : "")}</td>";
                             body += "</tr>";
                         }
-                    }
-                    else
-                    {
-                        body += $"<tr><td colspan='2'><i>No transactions found for {DateTime.Today.AddDays(-1).ToShortDateString()}</i></td></tr>";
                     }
                 }
             }
