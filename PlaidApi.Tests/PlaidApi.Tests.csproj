@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\DailyTransactionDigestEmail.Entities\PlaidApi.csproj" />
+    <ProjectReference Include="..\PlaindApi\PlaidApi.csproj" />
   </ItemGroup>
 
   <ItemGroup>
