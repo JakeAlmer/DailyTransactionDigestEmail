@@ -32,13 +32,22 @@ namespace DailyTransactionDigestEmail.AzureFunction.Business
             // get the transactions for yesterday for each account
             // its not perfect, if an account has issues later days won't catch up on those transactions but this is easy
             var accountTransactionResultsTasks = accounts
-               .Select(async a => new DigestItem
-                                  {
-                                      InstitutionAccount = a,
-                                      Transactions = await plaidApi.GetTransactionsAsync(access_token: a.AccessToken,
-                                                                                         startDate: DateTime.Today.AddDays(-1),
-                                                                                         endDate: DateTime.Today.AddDays(-1))
-                                  });
+               .Select(async a =>
+               {
+                   var result = new DigestItem { InstitutionAccount = a };
+                   try
+                   {
+                       result.Transactions = await plaidApi.GetTransactionsAsync(access_token: a.AccessToken,
+                                                                              startDate: DateTime.Today.AddDays(-1),
+                                                                              endDate: DateTime.Today.AddDays(-1));
+                   }
+                   catch (Exception ex)
+                   {
+                       result.Exception = ex;
+                   }
+
+                   return result;
+               });
             var accountTransactionResults = await Task.WhenAll(accountTransactionResultsTasks);
 
             await SendEmail(accountTransactionResults);
@@ -49,26 +58,34 @@ namespace DailyTransactionDigestEmail.AzureFunction.Business
             string body = $"<table>";
             foreach (var result in digestItems)
             {
-                foreach (var account in result.Transactions.accounts)
+                if (result.Successful)
                 {
-                    var accountTransactions = result.Transactions.transactions.Where(p => p.account_id == account.account_id).ToList();
-                    if (accountTransactions.Any())
+                    foreach (var account in result.Transactions.accounts)
                     {
-                        body += $"<tr><td colspan='3'><b>{result.InstitutionAccount.InstitutionNickName} - {account.official_name ?? account.name}</b></td></tr>";
-                        foreach (var transaction in accountTransactions)
+                        var accountTransactions = result.Transactions.transactions.Where(p => p.account_id == account.account_id).ToList();
+                        if (accountTransactions.Any())
                         {
-                            body += $"<tr style='color:{(transaction.pending ? "darkgray" : "black")};'>";
-                            body += $"<td>{transaction.name}</td>";
-                            body += $"<td style='text-align:right;padding-left:10px;'>{transaction.amount:c}</td>";
-                            body += $"<td>{(transaction.pending ? "(pending)" : "")}</td>";
-                            body += "</tr>";
+                            body += $"<tr><td colspan='3'><b>{result.InstitutionAccount.InstitutionNickName} - {account.official_name ?? account.name}</b></td></tr>";
+                            foreach (var transaction in accountTransactions)
+                            {
+                                body += $"<tr style='color:{(transaction.pending ? "darkgray" : "black")};'>";
+                                body += $"<td>{transaction.name}</td>";
+                                body += $"<td style='text-align:right;padding-left:10px;'>{transaction.amount:c}</td>";
+                                body += $"<td>{(transaction.pending ? "(pending)" : "")}</td>";
+                                body += "</tr>";
+                            }
                         }
                     }
+                }
+                else
+                {
+                    body += $"<tr><td colspan='3'><b>{result.InstitutionAccount.InstitutionNickName}</b></td></tr>";
+                    body += $"<tr><td colspan='3'>{result.Exception}</td></tr>";
                 }
             }
             body += $"</table>";
             var response = await _email
-                                .To("jake@almer.us", "Jake Almer")
+                                .To(Environment.GetEnvironmentVariable("report_email"))
                                 .Subject($"Daily Transaction Digest for {DateTime.Today.AddDays(-1).ToShortDateString()}")
                                 .Body(body, isHtml: true)
                                 .SendAsync();
